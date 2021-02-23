@@ -21,5 +21,9 @@
     "nodemon": "^1.17.3",
     "truffle": "5.1.63",
     "truffle-contract": "3.0.6"
+  },
+  "dependencies": {
+    "i": "^0.3.6",
+    "web3": "^1.3.3"
   }
 }
