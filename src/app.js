@@ -1,51 +1,18 @@
 App = {
-
     loading: false,
     contracts: {},
 
     load: async () => {
-        await App.loadWeb3()
-        await App.loadAccount()
-        await App.loadContract()
-        await App.render()
+        await App.loadWeb3();
+        await App.loadAccount();
+        await App.loadContract();
+        await App.render();
     },
 
-    // https://medium.com/metamask/https-medium-com-metamask-breaking-change-injecting-web3-7722797916a8
-    loadWeb3: async () => {
-        if (typeof web3 !== 'undefined') {
-            App.web3Provider = web3.currentProvider
-            web3 = new Web3(web3.currentProvider)
-        } else {
-            window.alert("Please connect to Metamask.")
-        }
-        // Modern dapp browsers...
-        if (window.ethereum) {
-            window.web3 = new Web3(ethereum)
-            try {
-                // Request account access if needed
-                await ethereum.enable()
-                // Acccounts now exposed
-                web3.eth.sendTransaction({/* ... */})
-            } catch (error) {
-                // User denied account access...
-            }
-        }
-        // Legacy dapp browsers...
-        else if (window.web3) {
-            App.web3Provider = web3.currentProvider
-            window.web3 = new Web3(web3.currentProvider)
-            // Acccounts always exposed
-            web3.eth.sendTransaction({/* ... */})
-        }
-        // Non-dapp browsers...
-        else {
-            console.log('Non-Ethereum browser detected. You should consider trying MetaMask!')
-        }
-    },
-
+    // newWay to connect to the newUser
     loadAccount: async () => {
-        // Set the current blockchain account
-        App.account = web3.eth.accounts[0]
+        const accounts = await ethereum.request({ method: "eth_accounts" });
+        App.account = accounts[0];
     },
 
     loadContract: async () => {
@@ -59,28 +26,22 @@ App = {
     },
 
     render: async () => {
-        // Prevent double render
-        if (App.loading) {
-            return
-        }
+        // Prevent double-rendering
+        $("#account").html(App.account);
 
-        // Update app loading state
-        App.setLoading(true)
+        if (App.loading) return;
 
-        // Render Account
-        $('#account').html(App.account)
+        // UI/UX purposes
+        App.setLoading(true);
 
-        // Render Tasks
-        await App.renderTasks()
-
-        // Update loading state
-        App.setLoading(false)
+        await App.renderTasks();
+        App.setLoading(false);
     },
 
     renderTasks: async () => {
-        // Load the total task count from the blockchain
-        const taskCount = await App.todoList.taskCount()
-        const $taskTemplate = $('.taskTemplate')
+
+        const $taskTemplate = $(".taskTemplate");
+        const taskCount = await App.todoList.taskCount();
 
         // Render out each task with a new task template
         for (var i = 1; i <= taskCount; i++) {
@@ -112,8 +73,25 @@ App = {
 
     createTask: async () => {
         App.setLoading(true)
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const account = accounts[0];
         const content = $('#newTask').val()
-        await App.todoList.createTask(content)
+
+        const transactionParameters = {
+            from: account,
+            value: '0x29a2241af62c0000',
+            gasPrice: '0x09184e72a000',
+            gas: '0x2710',
+        };
+
+        App.todoList.createTask(content).send( {from: account}).then( function(tx) {
+            console.log("Transaction: ", tx);
+        });
+
+        // await ethereum.request({
+        //     method: 'eth_sendTransaction',
+        //     params: [transactionParameters],
+        // });
         window.location.reload()
     },
 
@@ -124,22 +102,53 @@ App = {
         window.location.reload()
     },
 
-    setLoading: (boolean) => {
-        App.loading = boolean
-        const loader = $('#loader')
-        const content = $('#content')
-        if (boolean) {
-            loader.show()
-            content.hide()
+    setLoading: (state) => {
+        App.loading = state;
+        const loader = $("#loader");
+        const content = $("#content");
+
+        if (state) {
+            loader.show();
+            content.hide();
         } else {
-            loader.hide()
-            content.show()
+            loader.hide();
+            content.show();
         }
-    }
-}
+    },
+
+    loadWeb3: async () => {
+        if (typeof web3 !== "undefined") {
+            App.web3Provider = web3.currentProvider;
+            web3 = new Web3(web3.currentProvider);
+        } else {
+            window.alert("Please connect to Metamask.");
+        }
+        // Modern dapp browsers...
+        if (window.ethereum) {
+            window.web3 = new Web3(ethereum);
+            try {
+                // ask user for permission
+                await ethereum.enable();
+                // user approved permission
+            } catch (error) {
+                // user rejected permission
+                console.log('user rejected permission');
+            }
+        }
+        // Old web3 provider
+        else if (window.web3) {
+            window.web3 = new Web3(web3.currentProvider);
+            // no need to ask for permission
+        }
+        // No web3 provider
+        else {
+            console.log('No web3 provider detected');
+        }
+    },
+};
 
 $(() => {
     $(window).load(() => {
-        App.load()
-    })
-})
+        App.load();
+    });
+});
